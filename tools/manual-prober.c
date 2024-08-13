@@ -136,6 +136,7 @@ static void usage(char *name)
             "(default: %d)\n"
             "       -l <rounds>      periodic probing round limit (default: "
             "unlimited)\n"
+            "       -G <filename>    path to geoasn whitelist file\n"
             "       -n <prober-name> prober name (used in timeseries paths)\n"
             "       -p <driver>      probe driver to use (default: %s %s)\n"
             "                        options are:\n",
@@ -212,6 +213,7 @@ int main(int argc, char **argv)
   int opt, prevoptind;
 
   char *probelist_file;
+  char *geoasn_csv_file = NULL;
 
   char *driver_names[MAX_DRIVERS];
   int driver_names_cnt = 0;
@@ -252,7 +254,7 @@ int main(int argc, char **argv)
   }
 
   while (prevoptind = optind,
-         (opt = getopt(argc, argv, ":c:d:i:l:n:p:s:t:T:Sv?")) >= 0) {
+         (opt = getopt(argc, argv, ":c:d:G:i:l:n:p:s:t:T:Sv?")) >= 0) {
     if (optind == prevoptind + 2 && optarg && *optarg == '-' &&
         *(optarg + 1) != '\0') {
       opt = ':';
@@ -262,6 +264,10 @@ int main(int argc, char **argv)
     case 'd':
       duration = strtoull(optarg, NULL, 10);
       duration_set = 1;
+      break;
+
+    case 'G':
+      geoasn_csv_file = optarg;
       break;
 
     case 'i':
@@ -369,6 +375,10 @@ int main(int argc, char **argv)
   if ((prober = trinarkular_prober_create(prober_name, probelist_file,
                                           ts_slash24, ts_aggr)) == NULL) {
     goto err;
+  }
+
+  if (geoasn_csv_file != NULL) {
+    trinarkular_prober_set_geoasn_csv_file(prober, geoasn_csv_file);
   }
 
   if (duration_set != 0) {

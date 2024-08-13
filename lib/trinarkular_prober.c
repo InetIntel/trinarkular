@@ -223,6 +223,8 @@ struct params {
 
   /** Defaults to 1 (sleep for alignment) */
   int sleep_align_start;
+
+  char *geoasn_csv_file;
 };
 
 #define PARAM(pname) (prober->params.pname)
@@ -457,6 +459,9 @@ static void set_default_params(struct params *params)
 
   // sleep to align
   params->sleep_align_start = 1;
+
+  // file containing whitelisted geoasn pairs
+  params->geoasn_csv_file = NULL;
 }
 
 static int slash24_metrics_create(trinarkular_prober_t *prober,
@@ -710,6 +715,12 @@ int probelist_state_destroy(probelist_state_t *pl_state)
   return 0;
 }
 
+static int process_geoasn_whitelist(trinarkular_prober_t *prober)
+{
+  // TODO
+  return 0;
+}
+
 static int trinarkular_prober_prepare_probelist(trinarkular_prober_t *prober)
 {
   int i = 0;
@@ -740,6 +751,14 @@ static int trinarkular_prober_prepare_probelist(trinarkular_prober_t *prober)
 
   // and create all the state (including timeseries metrics)
   trinarkular_probelist_reset_slash24_iter(NEXT_PL(prober));
+
+  // create ts keys for all whitelisted metrics, so we will generate
+  // suitable '0' results if the geoasn pair does not appear in our
+  // probelist
+  if (process_geoasn_whitelist(prober) < 0) {
+    trinarkular_log("ERROR: Could not parse geoasn whitelist");
+    goto err;
+  }
 
   // iterates over the entire probelist.
   while ((s24 =
@@ -1270,6 +1289,11 @@ void trinarkular_prober_destroy(trinarkular_prober_t *prober)
     return;
   }
 
+  if (PARAM(geoasn_csv_file)) {
+    free(PARAM(geoasn_csv_file));
+  }
+  PARAM(geoasn_csv_file) = NULL;
+
   free(prober->name);
   prober->name = NULL;
   free(prober->name_ts);
@@ -1408,6 +1432,15 @@ void trinarkular_prober_set_periodic_probe_timeout(trinarkular_prober_t *prober,
 
   trinarkular_log("%" PRIu16, timeout);
   PARAM(periodic_probe_timeout) = timeout;
+}
+
+void trinarkular_prober_set_geoasn_csv_file(trinarkular_prober_t *prober,
+        char *filename) {
+  if (PARAM(geoasn_csv_file)) {
+    free(PARAM(geoasn_csv_file));
+  }
+  assert(filename);
+  PARAM(geoasn_csv_file) = strdup(filename);
 }
 
 void trinarkular_prober_disable_sleep_align_start(trinarkular_prober_t *prober)
