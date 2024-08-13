@@ -58,6 +58,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <pthread.h>
+#include <errno.h>
+#include <wandio.h>
 
 /** Print debugging info about adaptive/recovery probes */
 /* #define DEBUG_PROBING */
@@ -715,10 +717,95 @@ int probelist_state_destroy(probelist_state_t *pl_state)
   return 0;
 }
 
+static int process_geoasn_line(trinarkular_prober_t *prober, char *buffer) {
+  char buf[BUFFER_LEN];
+  int i;
+  char *tok;
+  uint64_t asn, regionid;
+
+  // add a timeseries key for every entry in the whitelist
+  tok = strtok(buffer, ",");
+  if (tok == NULL) {
+      return -1;
+  }
+
+  errno = 0;
+  asn = strtoul(tok, NULL, 10);
+  if (errno) {
+    fprintf(stderr, "Invalid ASN field: %s\n", tok);
+    return -1;
+  }
+
+  while ((tok = strtok(NULL, ",")) != NULL) {
+    if (tok[0] >= '0' && tok[0] <= '9') {
+      /* it is a region ID */
+      errno = 0;
+      regionid = strtoul(tok, NULL, 10);
+      if (errno) {
+        fprintf(stderr, "Invalid region ID: %s\n", tok);
+        return -1;
+      }
+
+      for (i = UNCERTAIN; i < BELIEF_STATE_CNT; i++) {
+        snprintf(buf, BUFFER_LEN,
+               METRIC_PREFIX_SLASH24
+               ".geoasn.ipinfo.region.%lu.%lu.probers.%s.%s_slash24_cnt",
+               asn, regionid, prober->name_ts, belief_states[i]);
+        if (timeseries_kp_get_key(NEXT_KP_AGGR(prober), buf) == -1 &&
+              timeseries_kp_add_key(NEXT_KP_AGGR(prober), buf) == -1) {
+          return -1;
+        }
+      }
+    } else {
+      /* it is a country (hopefully) */
+      if (strlen(tok) != 2) {
+          fprintf(stderr, "Invalid country code: %s\n", tok);
+          return -1;
+      }
+
+      for (i = UNCERTAIN; i < BELIEF_STATE_CNT; i++) {
+        snprintf(buf, BUFFER_LEN,
+               METRIC_PREFIX_SLASH24
+               ".geoasn.ipinfo.country.%lu.%s.probers.%s.%s_slash24_cnt",
+               asn, tok, prober->name_ts, belief_states[i]);
+        if (timeseries_kp_get_key(NEXT_KP_AGGR(prober), buf) == -1 &&
+              timeseries_kp_add_key(NEXT_KP_AGGR(prober), buf) == -1) {
+          return -1;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
 static int process_geoasn_whitelist(trinarkular_prober_t *prober)
 {
-  // TODO
-  return 0;
+  io_t *file;
+  char buffer[2048];
+  int read, rc = 1;
+
+  if (PARAM(geoasn_csv_file) == NULL) {
+    return 0;
+  }
+
+  if ((file = wandio_create(PARAM(geoasn_csv_file))) == NULL) {
+    fprintf(stderr, "ERROR: failed to open file '%s'\n",
+            PARAM(geoasn_csv_file));
+    return -1;
+  }
+
+  while ((read = wandio_fgets(file, &buffer, 2048, 0)) > 0) {
+    if (strlen(buffer) == 0) {
+        continue;
+    }
+    if (process_geoasn_line(prober, buffer) < 0) {
+      fprintf(stderr, "Malformed line in region csv file: %s \n", buffer);
+      rc = -1;
+      break;
+    }
+  }
+  wandio_destroy(file);
+  return rc;
 }
 
 static int trinarkular_prober_prepare_probelist(trinarkular_prober_t *prober)
