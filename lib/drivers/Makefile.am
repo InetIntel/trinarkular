@@ -57,7 +57,9 @@ DRIVER_LIBS=
 # Test Driver
 DRIVER_SRCS += \
 	trinarkular_driver_test.c \
-	trinarkular_driver_test.h
+	trinarkular_driver_test.h \
+	trinarkular_driver_utils.c \
+	trinarkular_driver_utils.h
 
 if WITH_SCAMPER
 # Scamper driver
