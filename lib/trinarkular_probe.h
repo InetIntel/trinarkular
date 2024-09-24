@@ -93,13 +93,14 @@ typedef struct trinarkular_probe_resp {
   /** The overall probe verdict */
   uint8_t verdict;
 
-#if 0
   /** The RTT of the first response received */
   uint16_t rtt;
 
   /** The number of probes that were sent in total */
   uint8_t probes_sent;
-#endif
+
+  /** The number of probes that were responded to in total */
+  uint8_t probes_replied;
 
 } __attribute__((packed)) trinarkular_probe_resp_t;
 
