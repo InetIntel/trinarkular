@@ -157,6 +157,14 @@ void trinarkular_prober_stop(trinarkular_prober_t *prober);
 void trinarkular_prober_set_periodic_round_duration(
   trinarkular_prober_t *prober, uint64_t duration);
 
+/** Sets the path to the file containing the geoasn pair whitelist
+ *
+ * @param prober        pointer to the prober to set parameter for
+ * @param filename      the path to the whitelist file
+ */
+void trinarkular_prober_set_geoasn_csv_file(trinarkular_prober_t *prober,
+        char *filename);
+
 /** Set the periodic slice count
  *
  * @param prober        pointer to the prober to set parameter for

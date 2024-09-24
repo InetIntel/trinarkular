@@ -58,6 +58,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <pthread.h>
+#include <errno.h>
+#include <wandio.h>
 
 /** Print debugging info about adaptive/recovery probes */
 /* #define DEBUG_PROBING */
@@ -223,6 +225,8 @@ struct params {
 
   /** Defaults to 1 (sleep for alignment) */
   int sleep_align_start;
+
+  char *geoasn_csv_file;
 };
 
 #define PARAM(pname) (prober->params.pname)
@@ -457,6 +461,9 @@ static void set_default_params(struct params *params)
 
   // sleep to align
   params->sleep_align_start = 1;
+
+  // file containing whitelisted geoasn pairs
+  params->geoasn_csv_file = NULL;
 }
 
 static int slash24_metrics_create(trinarkular_prober_t *prober,
@@ -710,6 +717,97 @@ int probelist_state_destroy(probelist_state_t *pl_state)
   return 0;
 }
 
+static int process_geoasn_line(trinarkular_prober_t *prober, char *buffer) {
+  char buf[BUFFER_LEN];
+  int i;
+  char *tok;
+  uint64_t asn, regionid;
+
+  // add a timeseries key for every entry in the whitelist
+  tok = strtok(buffer, ",");
+  if (tok == NULL) {
+      return -1;
+  }
+
+  errno = 0;
+  asn = strtoul(tok, NULL, 10);
+  if (errno) {
+    fprintf(stderr, "Invalid ASN field: %s\n", tok);
+    return -1;
+  }
+
+  while ((tok = strtok(NULL, ",")) != NULL) {
+    if (tok[0] >= '0' && tok[0] <= '9') {
+      /* it is a region ID */
+      errno = 0;
+      regionid = strtoul(tok, NULL, 10);
+      if (errno) {
+        fprintf(stderr, "Invalid region ID: %s\n", tok);
+        return -1;
+      }
+
+      for (i = UNCERTAIN; i < BELIEF_STATE_CNT; i++) {
+        snprintf(buf, BUFFER_LEN,
+               METRIC_PREFIX_SLASH24
+               ".geoasn.ipinfo.region.%lu.%lu.probers.%s.%s_slash24_cnt",
+               asn, regionid, prober->name_ts, belief_states[i]);
+        if (timeseries_kp_get_key(NEXT_KP_AGGR(prober), buf) == -1 &&
+              timeseries_kp_add_key(NEXT_KP_AGGR(prober), buf) == -1) {
+          return -1;
+        }
+      }
+    } else {
+      /* it is a country (hopefully) */
+      if (strlen(tok) != 2) {
+          fprintf(stderr, "Invalid country code: %s\n", tok);
+          return -1;
+      }
+
+      for (i = UNCERTAIN; i < BELIEF_STATE_CNT; i++) {
+        snprintf(buf, BUFFER_LEN,
+               METRIC_PREFIX_SLASH24
+               ".geoasn.ipinfo.country.%lu.%s.probers.%s.%s_slash24_cnt",
+               asn, tok, prober->name_ts, belief_states[i]);
+        if (timeseries_kp_get_key(NEXT_KP_AGGR(prober), buf) == -1 &&
+              timeseries_kp_add_key(NEXT_KP_AGGR(prober), buf) == -1) {
+          return -1;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+static int process_geoasn_whitelist(trinarkular_prober_t *prober)
+{
+  io_t *file;
+  char buffer[2048];
+  int read, rc = 1;
+
+  if (PARAM(geoasn_csv_file) == NULL) {
+    return 0;
+  }
+
+  if ((file = wandio_create(PARAM(geoasn_csv_file))) == NULL) {
+    fprintf(stderr, "ERROR: failed to open file '%s'\n",
+            PARAM(geoasn_csv_file));
+    return -1;
+  }
+
+  while ((read = wandio_fgets(file, &buffer, 2048, 0)) > 0) {
+    if (strlen(buffer) == 0) {
+        continue;
+    }
+    if (process_geoasn_line(prober, buffer) < 0) {
+      fprintf(stderr, "Malformed line in region csv file: %s \n", buffer);
+      rc = -1;
+      break;
+    }
+  }
+  wandio_destroy(file);
+  return rc;
+}
+
 static int trinarkular_prober_prepare_probelist(trinarkular_prober_t *prober)
 {
   int i = 0;
@@ -740,6 +838,14 @@ static int trinarkular_prober_prepare_probelist(trinarkular_prober_t *prober)
 
   // and create all the state (including timeseries metrics)
   trinarkular_probelist_reset_slash24_iter(NEXT_PL(prober));
+
+  // create ts keys for all whitelisted metrics, so we will generate
+  // suitable '0' results if the geoasn pair does not appear in our
+  // probelist
+  if (process_geoasn_whitelist(prober) < 0) {
+    trinarkular_log("ERROR: Could not parse geoasn whitelist");
+    goto err;
+  }
 
   // iterates over the entire probelist.
   while ((s24 =
@@ -1270,6 +1376,11 @@ void trinarkular_prober_destroy(trinarkular_prober_t *prober)
     return;
   }
 
+  if (PARAM(geoasn_csv_file)) {
+    free(PARAM(geoasn_csv_file));
+  }
+  PARAM(geoasn_csv_file) = NULL;
+
   free(prober->name);
   prober->name = NULL;
   free(prober->name_ts);
@@ -1408,6 +1519,15 @@ void trinarkular_prober_set_periodic_probe_timeout(trinarkular_prober_t *prober,
 
   trinarkular_log("%" PRIu16, timeout);
   PARAM(periodic_probe_timeout) = timeout;
+}
+
+void trinarkular_prober_set_geoasn_csv_file(trinarkular_prober_t *prober,
+        char *filename) {
+  if (PARAM(geoasn_csv_file)) {
+    free(PARAM(geoasn_csv_file));
+  }
+  assert(filename);
+  PARAM(geoasn_csv_file) = strdup(filename);
 }
 
 void trinarkular_prober_disable_sleep_align_start(trinarkular_prober_t *prober)
