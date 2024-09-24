@@ -52,15 +52,6 @@ bin_PROGRAMS = \
 EXTRA_DIST = 					\
 	requirements.txt
 
-if WITH_PROBELIST_GEN
-bin_PROGRAMS += trinarkular-gen-probelist
-
-trinarkular_gen_probelist_SOURCES = \
-	gen-probelist.c
-trinarkular_gen_probelist_LDADD = -ltrinarkular
-trinarkular_gen_probelist_LDFLAGS = -L$(top_builddir)/lib
-endif
-
 trinarkular_manual_prober_SOURCES = \
 	manual-prober.c
 trinarkular_manual_prober_LDADD = -ltrinarkular

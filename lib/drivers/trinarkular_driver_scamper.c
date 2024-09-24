@@ -420,6 +420,7 @@ static int handle_decode_in_fd_read(zloop_t *loop, zmq_pollitem_t *pi,
   scamper_dealias_probedef_t *def;
   scamper_dealias_probe_t *probe;
   scamper_dealias_reply_t *reply;
+  scamper_addr_t *addr;
   trinarkular_probe_resp_t resp;
   struct timeval rtt;
   uint64_t rtt_tmp;
@@ -439,22 +440,24 @@ static int handle_decode_in_fd_read(zloop_t *loop, zmq_pollitem_t *pi,
   assert(type == SCAMPER_FILE_OBJ_DEALIAS);
 
   dealias = (scamper_dealias_t *)data;
-  assert(dealias->method == SCAMPER_DEALIAS_METHOD_RADARGUN);
+  assert(scamper_dealias_method_get(dealias) ==
+          SCAMPER_DEALIAS_METHOD_RADARGUN);
 
-  for (i = 0; i < dealias->probec; i++) {
-    probe = dealias->probes[i];
-    def = probe->def;
+  for (i = 0; i < scamper_dealias_probec_get(dealias); i++) {
+    probe = scamper_dealias_probe_get(dealias, i);
+    def = scamper_dealias_probe_def_get(probe);
 
-    assert(def->dst->type == SCAMPER_ADDR_TYPE_IPV4);
-    memcpy(&resp.target_ip, def->dst->addr, sizeof(uint32_t));
+    addr = scamper_dealias_probedef_dst_get(def);
+    assert(scamper_addr_type_get(addr) == SCAMPER_ADDR_TYPE_IPV4);
+    memcpy(&resp.target_ip, scamper_addr_addr_get(addr), sizeof(uint32_t));
 
     resp.rtt = 0;
 
     resp.verdict = TRINARKULAR_PROBE_UNRESPONSIVE;
     // look for the first responsive reply
-    for (j = 0; j < probe->replyc; j++) {
-      reply = probe->replies[j];
-      if (reply != NULL && SCAMPER_DEALIAS_REPLY_FROM_TARGET(probe, reply)) {
+    for (j = 0; j < scamper_dealias_probe_replyc_get(probe); j++) {
+      reply = scamper_dealias_probe_reply_get(probe, j);
+      if (reply != NULL && scamper_dealias_reply_from_target(probe, reply)) {
         resp.verdict = TRINARKULAR_PROBE_RESPONSIVE;
         timeval_subtract(&rtt, scamper_dealias_reply_rx_get(reply),
                 scamper_dealias_probe_tx_get(probe));
@@ -502,11 +505,14 @@ static int scamper_connect(trinarkular_driver_t *drv)
     }
   } else {
     // unix socket
-    if (sockaddr_compose_un((struct sockaddr *)&sun, MY(drv)->unix_socket) !=
-        0) {
+    if (strlen(MY(drv)->unix_socket) + 1 > sizeof(sun.sun_path)) {
       trinarkular_log("ERROR: could not build sockaddr_un");
       return -1;
     }
+    memset(&sun, 0, sizeof(struct sockaddr_un));
+    sun.sun_family = AF_UNIX;
+    snprintf(sun.sun_path, sizeof(sun.sun_path), "%s", MY(drv)->unix_socket);
+
     if ((MY(drv)->scamper_fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
       trinarkular_log("ERROR:could not allocate unix domain socket");
       return -1;
