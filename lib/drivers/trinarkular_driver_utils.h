@@ -48,7 +48,5 @@
 int sockaddr_compose(struct sockaddr *sa, int af, const void *addr, int port);
 int uudecode_line(const char *in, size_t ilen, uint8_t *out, size_t *olen);
 int fcntl_set(int fd, int flags);
-int string_tolong(const char *str, long *l);
-int string_isnumber(const char *str);
 
 #endif
