@@ -720,7 +720,7 @@ int probelist_state_destroy(probelist_state_t *pl_state)
 static int process_geoasn_line(trinarkular_prober_t *prober, char *buffer) {
   char buf[BUFFER_LEN];
   int i;
-  char *tok;
+  char *tok, *ptr;
   uint64_t asn, regionid;
 
   // add a timeseries key for every entry in the whitelist
@@ -758,6 +758,12 @@ static int process_geoasn_line(trinarkular_prober_t *prober, char *buffer) {
       }
     } else {
       /* it is a country (hopefully) */
+      if ((ptr = strchr(tok, '\n')) != NULL) {
+          *ptr = '\0';
+      }
+      if (*tok == '\0') {
+          break;
+      }
       if (strlen(tok) != 2) {
           fprintf(stderr, "Invalid country code: %s\n", tok);
           return -1;
