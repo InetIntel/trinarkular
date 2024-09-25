@@ -395,7 +395,7 @@ static int handle_scamperread_line(void *param, uint8_t *buf, size_t linelen)
   /* new piece of data */
   if (linelen > 5 && strncasecmp(head, "DATA ", 5) == 0) {
     if ((lo = strtol(head + 5, &ptr, 10)) < 1 ||
-        (*ptr != '\n' && *ptr != ' ')) {
+        (*ptr != '\n' && *ptr != ' ' && *ptr != '\0')) {
       trinarkular_log("debug: %ld %02x", lo, (uint8_t)(*ptr));
       head[linelen] = '\0';
       trinarkular_log("could not parse %s", head);
