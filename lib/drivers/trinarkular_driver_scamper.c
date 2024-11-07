@@ -357,6 +357,7 @@ static int handle_scamperread_line(void *param, uint8_t *buf, size_t linelen)
   uint8_t uu[64];
   size_t uus;
   long lo;
+  char *ptr;
 
   /* skip empty lines */
   if (head[0] == '\0') {
@@ -393,7 +394,9 @@ static int handle_scamperread_line(void *param, uint8_t *buf, size_t linelen)
 
   /* new piece of data */
   if (linelen > 5 && strncasecmp(head, "DATA ", 5) == 0) {
-    if (string_isnumber(head + 5) == 0 || string_tolong(head + 5, &lo) != 0) {
+    if ((lo = strtol(head + 5, &ptr, 10)) < 1 ||
+        (*ptr != '\n' && *ptr != ' ' && *ptr != '\0')) {
+      head[linelen] = '\0';
       trinarkular_log("could not parse %s", head);
       return -1;
     }
