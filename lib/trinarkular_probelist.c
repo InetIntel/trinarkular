@@ -864,15 +864,21 @@ void *trinarkular_probelist_get_first_slash24_state(
 void *trinarkular_probelist_get_next_slash24_state(
         trinarkular_probelist_t *pl, khiter_t *iter) {
 
+  void *ret = NULL;
   if (pl == NULL || pl->state_hash == NULL) {
     return NULL;
   }
 
   while (*iter != kh_end(pl->state_hash)) {
     if (kh_exist(pl->state_hash, *iter)) {
-      return &kh_val(pl->state_hash, *iter);
+      ret = &kh_val(pl->state_hash, *iter);
+    } else {
+      ret = NULL;
     }
     (*iter)++;
+    if (ret) {
+      return ret;
+    }
   }
   return NULL;
 }
