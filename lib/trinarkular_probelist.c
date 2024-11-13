@@ -109,6 +109,7 @@ static int copy_state(trinarkular_slash24_state_t *to,
   to->replies_seen = from->replies_seen;
   to->latency_kp_index = from->latency_kp_index;
   to->loss_kp_index = from->loss_kp_index;
+  to->probes_kp_index = from->probes_kp_index;
 
   // realloc metrics array
   if ((to->metrics =
@@ -712,6 +713,27 @@ int trinarkular_probelist_get_slash24_cnt(trinarkular_probelist_t *pl)
   return pl->slash24s_cnt;
 }
 
+void trinarkular_probelist_reset_slash24_counters(trinarkular_probelist_t *pl)
+{
+  khiter_t k;
+  trinarkular_slash24_state_t *state;
+
+  if (pl == NULL) {
+    return;
+  }
+
+  if (pl->state_hash != NULL) {
+    for (k = kh_begin(pl->state_hash); k < kh_end(pl->state_hash); k++) {
+      if (kh_exist(pl->state_hash, k) != 0) {
+        state = &(kh_val(pl->state_hash, k));
+        state->cumulative_rtt = 0;
+        state->probes_sent = 0;
+        state->replies_seen = 0;
+      }
+    }
+  }
+}
+
 void trinarkular_probelist_reset_slash24_iter(trinarkular_probelist_t *pl)
 {
   pl->slash24_iter = 0;
@@ -820,6 +842,39 @@ int trinarkular_probelist_save_slash24_state(trinarkular_probelist_t *pl,
   }
 
   return copy_state(dest, state);
+}
+
+void *trinarkular_probelist_get_first_slash24_state(
+        trinarkular_probelist_t *pl, khiter_t *iter) {
+
+  if (pl == NULL || pl->state_hash == NULL) {
+    return NULL;
+  }
+
+  *iter = kh_begin(pl->state_hash);
+  while (*iter != kh_end(pl->state_hash)) {
+    if (kh_exist(pl->state_hash, *iter)) {
+      return &kh_val(pl->state_hash, *iter);
+    }
+    (*iter)++;
+  }
+  return NULL;
+}
+
+void *trinarkular_probelist_get_next_slash24_state(
+        trinarkular_probelist_t *pl, khiter_t *iter) {
+
+  if (pl == NULL || pl->state_hash == NULL) {
+    return NULL;
+  }
+
+  while (*iter != kh_end(pl->state_hash)) {
+    if (kh_exist(pl->state_hash, *iter)) {
+      return &kh_val(pl->state_hash, *iter);
+    }
+    (*iter)++;
+  }
+  return NULL;
 }
 
 void *trinarkular_probelist_get_slash24_state(trinarkular_probelist_t *pl,

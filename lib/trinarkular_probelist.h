@@ -44,7 +44,7 @@
 #define __TRINARKULAR_PROBELIST_H
 
 #include <stdint.h>
-
+#include "khash.h"
 /** @file
  *
  * @brief Header file that exposes the public interface of the trinarkular
@@ -286,6 +286,12 @@ void *trinarkular_probelist_get_slash24_state(trinarkular_probelist_t *pl,
  *  @param pl           pointer to a probelist
  */
 void trinarkular_probelist_reset_slash24_counters(trinarkular_probelist_t *pl);
+
+void *trinarkular_probelist_get_next_slash24_state(
+        trinarkular_probelist_t *pl, khiter_t *iter);
+
+void *trinarkular_probelist_get_first_slash24_state(
+        trinarkular_probelist_t *pl, khiter_t *iter);
 
 // Helper functions
 

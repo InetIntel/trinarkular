@@ -698,26 +698,22 @@ static void set_slash24_kp_values(trinarkular_prober_t *prober) {
       return;
   }
 
-  if (!pl->state_hash) {
-      return;
-  }
-  for (k = kh_begin(pl->state_hash); k < kh_end(pl->state_hash); k++) {
-    if (kh_exist(pl->state_hash, k) != 0) {
-      state = &(kh_val(pl->state_hash, k));
-      if (state->replies_seen <= state->probes_sent) {
-          timeseries_kp_set(ACTIVE_KP_SLASH24(prober),
-                  state->loss_kp_index,
-                  state->probes_sent - state->replies_seen);
-      }
+  state = trinarkular_probelist_get_first_slash24_state(pl, &k);
+  while (state != NULL) {
+    if (state->replies_seen <= state->probes_sent) {
       timeseries_kp_set(ACTIVE_KP_SLASH24(prober),
-              state->probes_kp_index, state->probes_sent);
+              state->loss_kp_index,
+              state->probes_sent - state->replies_seen);
+    }
+    timeseries_kp_set(ACTIVE_KP_SLASH24(prober),
+        state->probes_kp_index, state->probes_sent);
 
-      if (state->probes_sent > 0) {
-        timeseries_kp_set(ACTIVE_KP_SLASH24(prober),
+    if (state->probes_sent > 0) {
+      timeseries_kp_set(ACTIVE_KP_SLASH24(prober),
           state->latency_kp_index,
           (uint32_t)(state->cumulative_rtt / state->probes_sent));
-      }
     }
+    state = trinarkular_probelist_get_next_slash24_state(pl, &k);
   }
 }
 
