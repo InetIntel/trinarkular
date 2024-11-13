@@ -104,6 +104,11 @@ static int copy_state(trinarkular_slash24_state_t *to,
   to->current_belief = from->current_belief;
   to->current_state = from->current_state;
   to->rounds_since_up = from->rounds_since_up;
+  to->cumulative_rtt = from->cumulative_rtt;
+  to->probes_sent = from->probes_sent;
+  to->replies_seen = from->replies_seen;
+  to->latency_kp_index = from->latency_kp_index;
+  to->loss_kp_index = from->loss_kp_index;
 
   // realloc metrics array
   if ((to->metrics =

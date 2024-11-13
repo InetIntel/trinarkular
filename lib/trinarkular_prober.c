@@ -466,6 +466,39 @@ static void set_default_params(struct params *params)
   params->geoasn_csv_file = NULL;
 }
 
+static int slash24_latloss_metrics_create(trinarkular_prober_t *prober,
+        trinarkular_slash24_state_t *s24_state,
+        const char *slash24_string) {
+
+  char buf[BUFFER_LEN];
+
+  snprintf(buf, BUFFER_LEN, METRIC_PREFIX_SLASH24
+          ".single_s24.probers.%s.%s.latency",
+          prober->name_ts, slash24_string);
+  if ((s24_state->latency_kp_index =
+          timeseries_kp_add_key(NEXT_KP_SLASH24(prober), buf)) == -1) {
+      return -1;
+  }
+
+  snprintf(buf, BUFFER_LEN, METRIC_PREFIX_SLASH24
+          ".single_s24.probers.%s.%s.lostprobes",
+          prober->name_ts, slash24_string);
+  if ((s24_state->loss_kp_index =
+          timeseries_kp_add_key(NEXT_KP_SLASH24(prober), buf)) == -1) {
+      return -1;
+  }
+
+  snprintf(buf, BUFFER_LEN, METRIC_PREFIX_SLASH24
+          ".single_s24.probers.%s.%s.probessent",
+          prober->name_ts, slash24_string);
+  if ((s24_state->probes_kp_index =
+          timeseries_kp_add_key(NEXT_KP_SLASH24(prober), buf)) == -1) {
+      return -1;
+  }
+  return 0;
+}
+
+
 static int slash24_metrics_create(trinarkular_prober_t *prober,
                                   trinarkular_slash24_metrics_t *metrics,
                                   const char *slash24_string, const char *md,
@@ -546,6 +579,11 @@ slash24_state_create(trinarkular_prober_t *prober, trinarkular_slash24_t *s24)
   slash24_ip = htonl(s24->network_ip);
   inet_ntop(AF_INET, &slash24_ip, slash24_str, INET_ADDRSTRLEN);
   graphite_safe(slash24_str);
+  if (slash24_latloss_metrics_create(prober, state, slash24_str) != 0) {
+      trinarkular_log("ERROR: Could not create slash24 latency/loss metrics for %s", slash24_str);
+      return NULL;
+  }
+
   for (i = 0; i < s24->md_cnt; i++) {
     // create metrics for this metadata
     if (slash24_metrics_create(prober, &state->metrics[i], slash24_str,
@@ -650,6 +688,39 @@ static int queue_slash24_probe(trinarkular_prober_t *prober,
   return 0;
 }
 
+static void set_slash24_kp_values(trinarkular_prober_t *prober) {
+  khiter_t k;
+  trinarkular_slash24_state_t *state;
+  trinarkular_probelist_t *pl;
+
+  pl = ACTIVE_PL(prober);
+  if (!pl) {
+      return;
+  }
+
+  if (!pl->state_hash) {
+      return;
+  }
+  for (k = kh_begin(pl->state_hash); k < kh_end(pl->state_hash); k++) {
+    if (kh_exist(pl->state_hash, k) != 0) {
+      state = &(kh_val(pl->state_hash, k));
+      if (state->replies_seen <= state->probes_sent) {
+          timeseries_kp_set(ACTIVE_KP_SLASH24(prober),
+                  state->loss_kp_index,
+                  state->probes_sent - state->replies_seen);
+      }
+      timeseries_kp_set(ACTIVE_KP_SLASH24(prober),
+              state->probes_kp_index, state->probes_sent);
+
+      if (state->probes_sent > 0) {
+        timeseries_kp_set(ACTIVE_KP_SLASH24(prober),
+          state->latency_kp_index,
+          (uint32_t)(state->cumulative_rtt / state->probes_sent));
+      }
+    }
+  }
+}
+
 static int end_of_round(trinarkular_prober_t *prober, int round_id)
 {
   uint64_t now = zclock_time();
@@ -657,6 +728,8 @@ static int end_of_round(trinarkular_prober_t *prober, int round_id)
     ((uint64_t)(ACTIVE_STAT(start_time) / PARAM(periodic_round_duration))) *
     PARAM(periodic_round_duration);
   int i;
+
+  set_slash24_kp_values(prober);
 
   timeseries_kp_set(ACTIVE_KP_AGGR(prober),
                     ACTIVE_METRICS(prober).round_id, round_id);
@@ -1017,6 +1090,10 @@ static int handle_timer(zloop_t *loop, int timer_id, void *arg)
 
     trinarkular_log("starting round %d", probing_round);
     trinarkular_probelist_reset_slash24_iter(ACTIVE_PL(prober));
+
+    // reset cumulative RTT and probe counters in every /24 state
+    trinarkular_probelist_reset_slash24_counters(ACTIVE_PL(prober));
+
     // reset round stats
     reset_round_stats(prober, now);
 
@@ -1074,7 +1151,7 @@ static int handle_timer(zloop_t *loop, int timer_id, void *arg)
     if (queue_slash24_probe(prober, s24, state, PERIODIC) != 0) {
       return -1;
     }
-
+    state->probes_sent ++;
     queued_cnt++;
   }
 
@@ -1178,6 +1255,11 @@ static int handle_driver_resp(zloop_t *loop, zsock_t *reader, void *arg)
   // round is much longer than the timeout)
   if (state->last_probe_type == UNPROBED) {
     return 0;
+  }
+
+  if (resp.verdict == TRINARKULAR_PROBE_RESPONSIVE) {
+      state->replies_seen ++;
+      state->cumulative_rtt += resp.rtt;
   }
 
   // update the overall per-round statistics
