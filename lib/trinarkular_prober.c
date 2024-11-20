@@ -547,8 +547,10 @@ static int slash24_metrics_create(trinarkular_prober_t *prober,
   }
 
   // add this /24 to the UP state
+#if 0
   tmp = timeseries_kp_get(NEXT_KP_AGGR(prober), metrics->overall[UP]);
   timeseries_kp_set(NEXT_KP_AGGR(prober), metrics->overall[UP], tmp + 1);
+#endif
 
   return 0;
 }
@@ -727,6 +729,8 @@ static int end_of_round(trinarkular_prober_t *prober, int round_id)
 
   set_slash24_kp_values(prober);
 
+
+#if 0
   timeseries_kp_set(ACTIVE_KP_AGGR(prober),
                     ACTIVE_METRICS(prober).round_id, round_id);
   timeseries_kp_set(ACTIVE_KP_AGGR(prober),
@@ -754,6 +758,7 @@ static int end_of_round(trinarkular_prober_t *prober, int round_id)
   timeseries_kp_set(ACTIVE_KP_AGGR(prober), ACTIVE_METRICS(prober).slash24_cnt,
                     ACTIVE_STAT(slash24_cnt));
 
+#endif
   trinarkular_log("round %d completed in %" PRIu64 "ms (ideal: %" PRIu64 "ms)",
                   round_id, now - ACTIVE_STAT(start_time),
                   PARAM(periodic_round_duration));
@@ -1352,6 +1357,7 @@ static int handle_driver_resp(zloop_t *loop, zsock_t *reader, void *arg)
 
     // update the timeseries
     for (i = 0; i < state->metrics_cnt; i++) {
+#if 0
       if (state->metrics[i].belief != -1) {
         timeseries_kp_set(ACTIVE_KP_SLASH24(prober), state->metrics[i].belief,
                           new_belief_up * 100);
@@ -1371,6 +1377,7 @@ static int handle_driver_resp(zloop_t *loop, zsock_t *reader, void *arg)
       key = state->metrics[i].overall[BELIEF_STATE(new_belief_up)];
       tmp = timeseries_kp_get(ACTIVE_KP_AGGR(prober), key);
       timeseries_kp_set(ACTIVE_KP_AGGR(prober), key, tmp + 1);
+#endif
     }
 
     // update the stable state
