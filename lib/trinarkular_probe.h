@@ -94,7 +94,7 @@ typedef struct trinarkular_probe_resp {
   uint8_t verdict;
 
   /** The RTT of the first response received */
-  uint16_t rtt;
+  uint32_t rtt;
 
   /** The number of probes that were sent in total */
   uint8_t probes_sent;
