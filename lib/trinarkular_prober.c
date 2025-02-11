@@ -468,29 +468,29 @@ static void set_default_params(struct params *params)
 
 static int slash24_latloss_metrics_create(trinarkular_prober_t *prober,
         trinarkular_slash24_state_t *s24_state,
-        const char *slash24_string) {
+        uint32_t slash24_ip) {
 
   char buf[BUFFER_LEN];
 
   snprintf(buf, BUFFER_LEN, METRIC_PREFIX_SLASH24
-          ".single_s24.probers.%s.%s.latency",
-          prober->name_ts, slash24_string);
+          ".single_s24.probers.%s.__S24_%u.latency",
+          prober->name_ts, slash24_ip);
   if ((s24_state->latency_kp_index =
           timeseries_kp_add_key(NEXT_KP_SLASH24(prober), buf)) == -1) {
       return -1;
   }
 
   snprintf(buf, BUFFER_LEN, METRIC_PREFIX_SLASH24
-          ".single_s24.probers.%s.%s.lostprobes",
-          prober->name_ts, slash24_string);
+          ".single_s24.probers.%s.__S24_%u.lostprobes",
+          prober->name_ts, slash24_ip);
   if ((s24_state->loss_kp_index =
           timeseries_kp_add_key(NEXT_KP_SLASH24(prober), buf)) == -1) {
       return -1;
   }
 
   snprintf(buf, BUFFER_LEN, METRIC_PREFIX_SLASH24
-          ".single_s24.probers.%s.%s.probessent",
-          prober->name_ts, slash24_string);
+          ".single_s24.probers.%s.__S24_%u.probessent",
+          prober->name_ts, slash24_ip);
   if ((s24_state->probes_kp_index =
           timeseries_kp_add_key(NEXT_KP_SLASH24(prober), buf)) == -1) {
       return -1;
@@ -581,7 +581,7 @@ slash24_state_create(trinarkular_prober_t *prober, trinarkular_slash24_t *s24)
   slash24_ip = htonl(s24->network_ip);
   inet_ntop(AF_INET, &slash24_ip, slash24_str, INET_ADDRSTRLEN);
   graphite_safe(slash24_str);
-  if (slash24_latloss_metrics_create(prober, state, slash24_str) != 0) {
+  if (slash24_latloss_metrics_create(prober, state, s24->network_ip) != 0) {
       trinarkular_log("ERROR: Could not create slash24 latency/loss metrics for %s", slash24_str);
       return NULL;
   }
