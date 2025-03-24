@@ -179,7 +179,7 @@ int trinarkular_probe_resp_send(void *dst, trinarkular_probe_resp_t *resp)
   size_t written = 0;
   size_t s;
 
-  //uint64_t u32;
+  uint32_t u32;
 
   // send the command type ("RESP")
   if (zmq_send(dst, "RESP", strlen("RESP"), ZMQ_SNDMORE) != strlen("RESP")) {
@@ -194,8 +194,11 @@ int trinarkular_probe_resp_send(void *dst, trinarkular_probe_resp_t *resp)
   SERIALIZE_VAL(resp->verdict);
 
   // rtt
-  //u32 = htonl(resp->rtt);
-  //SERIALIZE_VAL(u32);
+  u32 = htonl(resp->rtt);
+  SERIALIZE_VAL(u32);
+
+  SERIALIZE_VAL(resp->probes_sent);
+  SERIALIZE_VAL(resp->probes_replied);
 
   // send the buffer
   if (zmq_send(dst, buf, written, 0) != written) {
@@ -232,8 +235,11 @@ int trinarkular_probe_resp_recv(void *src, trinarkular_probe_resp_t *resp)
   DESERIALIZE_VAL(resp->verdict);
 
   // rtt
-  //DESERIALIZE_VAL(resp->rtt);
-  //resp->rtt = ntohl(resp->rtt);
+  DESERIALIZE_VAL(resp->rtt);
+  resp->rtt = ntohl(resp->rtt);
+
+  DESERIALIZE_VAL(resp->probes_sent);
+  DESERIALIZE_VAL(resp->probes_replied);
 
   return 0;
 

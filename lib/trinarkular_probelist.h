@@ -44,7 +44,7 @@
 #define __TRINARKULAR_PROBELIST_H
 
 #include <stdint.h>
-
+#include "khash.h"
 /** @file
  *
  * @brief Header file that exposes the public interface of the trinarkular
@@ -130,6 +130,18 @@ typedef struct trinarkular_slash24_state {
 
   /** Set of timeseries associated with this /24 (one per metadata)*/
   trinarkular_slash24_metrics_t *metrics;
+
+  uint64_t cumulative_rtt;
+
+  uint32_t probes_sent;
+
+  uint32_t replies_seen;
+
+  int32_t latency_kp_index;
+
+  int32_t loss_kp_index;
+
+  int32_t probes_kp_index;
 
   /** Number of metric sets */
   uint8_t metrics_cnt;
@@ -267,6 +279,19 @@ int trinarkular_probelist_save_slash24_state(
  */
 void *trinarkular_probelist_get_slash24_state(trinarkular_probelist_t *pl,
                                               trinarkular_slash24_t *s24);
+
+/** Reset the cumulative latency and probe counters for each /24 in the
+ *  probelist.
+ *
+ *  @param pl           pointer to a probelist
+ */
+void trinarkular_probelist_reset_slash24_counters(trinarkular_probelist_t *pl);
+
+void *trinarkular_probelist_get_next_slash24_state(
+        trinarkular_probelist_t *pl, khiter_t *iter);
+
+void *trinarkular_probelist_get_first_slash24_state(
+        trinarkular_probelist_t *pl, khiter_t *iter);
 
 // Helper functions
 
