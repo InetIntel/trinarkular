@@ -729,8 +729,6 @@ static int end_of_round(trinarkular_prober_t *prober, int round_id)
 
   set_slash24_kp_values(prober);
 
-
-#if 0
   timeseries_kp_set(ACTIVE_KP_AGGR(prober),
                     ACTIVE_METRICS(prober).round_id, round_id);
   timeseries_kp_set(ACTIVE_KP_AGGR(prober),
@@ -758,7 +756,6 @@ static int end_of_round(trinarkular_prober_t *prober, int round_id)
   timeseries_kp_set(ACTIVE_KP_AGGR(prober), ACTIVE_METRICS(prober).slash24_cnt,
                     ACTIVE_STAT(slash24_cnt));
 
-#endif
   trinarkular_log("round %d completed in %" PRIu64 "ms (ideal: %" PRIu64 "ms)",
                   round_id, now - ACTIVE_STAT(start_time),
                   PARAM(periodic_round_duration));
