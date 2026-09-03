@@ -112,7 +112,7 @@ AC_SEARCH_LIBS([wandio_create], [wandio trace], with_wandio=yes,
 	       )])
 AM_CONDITIONAL([WITH_WANDIO], [test x$with_wandio = xyes])
 
-AC_CHECK_LIB([czmq], [zctx_new], ,[AC_MSG_ERROR([CZMQ is required])])
+AC_CHECK_LIB([czmq], [zloop_new], ,[AC_MSG_ERROR([CZMQ is required])])
 
 AC_CHECK_LIB([timeseries], [timeseries_init], , [
     AC_MSG_ERROR([libtimeseries is required])
