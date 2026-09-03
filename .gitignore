@@ -43,6 +43,10 @@ Makefile
 /install-sh
 /missing
 .deps/
+/.local/
+/INSTALL
+/poc/censys.env
+/poc/results/
 /config.h
 config.status
 config.h.in

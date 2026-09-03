@@ -54,7 +54,7 @@
 
 #define ASSERT_MORE                                                            \
   do {                                                                         \
-    if (zsocket_rcvmore(src) == 0) {                                           \
+    if (zsock_rcvmore(src) == 0) {                                             \
       trinarkular_log("ERROR: Malformed message at line %d\n", __LINE__);      \
       goto err;                                                                \
     }                                                                          \
@@ -151,7 +151,7 @@ int trinarkular_probe_req_recv(void *src, trinarkular_probe_req_t *req)
     fprintf(stderr, "Could not receive req message\n");
     goto err;
   }
-  assert(zsocket_rcvmore(src) == 0);
+  assert(zsock_rcvmore(src) == 0);
   buf = zmq_msg_data(&msg);
   len = zmq_msg_size(&msg);
   read = 0;
@@ -219,7 +219,7 @@ int trinarkular_probe_resp_recv(void *src, trinarkular_probe_resp_t *resp)
     fprintf(stderr, "Could not receive resp message\n");
     goto err;
   }
-  assert(zsocket_rcvmore(src) == 0);
+  assert(zsock_rcvmore(src) == 0);
   buf = zmq_msg_data(&msg);
   len = zmq_msg_size(&msg);
   read = 0;
