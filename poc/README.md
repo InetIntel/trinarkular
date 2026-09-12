@@ -13,6 +13,9 @@ The experiment is deliberately small and exploratory. It is not a validation of
 outage detection: no outage occurred while it ran, so it measures *coverage* and
 short-term *response stability* only.
 
+A second run exists over Suriname, selected by real AS population data
+instead of a Censys query — see `poc/README_suriname.md`.
+
 ## Background
 
 Two papers motivate the design:
